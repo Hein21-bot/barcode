@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Barcode Edge Detection with JavaScript</title>
+</head>
+<body>
+    <input type="file" id="fileInput" accept="image/*">
+    <canvas id="canvasOutput"></canvas>
+
+    <script type="text/javascript">
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) {
+                return;
+            }
+
+            const imgElement = document.createElement('img');
+            imgElement.src = URL.createObjectURL(file);
+            imgElement.onload = function() {
+                const canvas = document.getElementById('canvasOutput');
+                const ctx = canvas.getContext('2d');
+
+                // Set canvas dimensions to match the image
+                canvas.width = imgElement.width;
+                canvas.height = imgElement.height;
+
+                // Draw the image on the canvas
+                ctx.drawImage(imgElement, 0, 0);
+
+                // Perform edge detection and find boundaries (simplified approach)
+                findBarcodesBoundaries(canvas);
+            };
+        });
+
+        function findBarcodesBoundaries(canvas) {
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            // Define parameters for edge detection
+            const thresholdLow = 100;
+            const thresholdHigh = 200;
+            const maxContourArea = 1000;
+
+            // Apply edge detection using Canny-like algorithm
+            for (let i = 0; i < data.length; i += 4) {
+                const gray = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                data[i] = gray;
+                data[i + 1] = gray;
+                data[i + 2] = gray;
+            }
+
+            // Perform edge detection
+            const edgeImage = cv.threshold(imageData, thresholdLow, thresholdHigh);
+
+            // Find contours
+            const contours = cv.findContours(edgeImage, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+            // Filter and draw rectangle-like contours with sufficient area
+            for (let i = 0; i < contours.size(); i++) {
+                const contour = contours.get(i);
+                if (cv.contourArea(contour) > maxContourArea) {
+                    const color = new cv.Scalar(0, 255, 0); // Green
+                    cv.drawContours(imageData, contours, i, color, 2);
+                }
+            }
+
+            // Update the canvas with the processed image
+            ctx.putImageData(imageData, 0, 0);
+        }
+    </script>
+    <script src="https://docs.opencv.org/4.x/opencv.js"></script>
+</body>
+</html>
