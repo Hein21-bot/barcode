@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@u4/opencv4nodejs": "^6.5.2",
     "canvas": "^2.11.2",
     "fs": "^0.0.1-security",
     "jimp": "^0.22.10",
