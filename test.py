@@ -1,45 +1,33 @@
 import cv2
 import numpy as np
-from pyzbar.pyzbar import decode
 
-def remove_horizontal_scratches(image, kernel_size=(1, 40), inpaint_radius=3):
-    # Convert image to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    
-    # Detect horizontal lines, which are likely to be scratches
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, kernel_size)
-    detect_horizontal = cv2.morphologyEx(gray, cv2.MORPH_OPEN, kernel, iterations=2)
-    
-    # Create a mask for detected scratches
-    _, scratch_mask = cv2.threshold(detect_horizontal, 0, 255, cv2.THRESH_BINARY_INV)
+def clean_barcode_lines(image):
+    # Apply adaptive thresholding to the image to isolate the barcode
+    adaptive_thresh = cv2.adaptiveThreshold(image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                            cv2.THRESH_BINARY_INV, 11, 2)
 
-    # Inpaint the scratches on the original image
-    inpainted_image = cv2.inpaint(image, scratch_mask, inpaint_radius, cv2.INPAINT_TELEA)
+    # Use a horizontal kernel to detect and preserve horizontal lines (barcode lines)
+    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 1))
+    detected_lines = cv2.morphologyEx(adaptive_thresh, cv2.MORPH_CLOSE, horizontal_kernel, iterations=2)
     
-    return inpainted_image
+    # Use bitwise 'and' to preserve only the regions of the barcode
+    cleaned_image = cv2.bitwise_and(adaptive_thresh, detected_lines)
+    
+    return cleaned_image
 
 # Load the image
-image_path = 'Gray-Barcodes/gray-barcode-screenshot1.png'
-image = cv2.imread(image_path)
-if image is None:
-    print("Failed to load the image. Please check the file path and try again.")
-    exit()
+image_path = 'BarcodeScreenshots/barcode-screenshot1.png'
+image = cv2.imread(image_path, 0)  # Load the image in grayscale mode
 
-# Remove horizontal scratches from the image
-cleaned_image = remove_horizontal_scratches(image)
-
-# Attempt to decode any barcodes in the cleaned image
-barcodes = decode(cleaned_image)
-for barcode in barcodes:
-    (x, y, w, h) = barcode.rect
-    cv2.rectangle(cleaned_image, (x, y), (x + w, y + h), (0, 0, 255), 2)
-    barcode_data = barcode.data.decode("utf-8")
-    barcode_type = barcode.type
-    text = f"{barcode_data} ({barcode_type})"
-    cv2.putText(cleaned_image, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-    print(f"Found barcode: Type: {barcode_type}, Data: {barcode_data}")
+# Clean the barcode lines
+cleaned_image = clean_barcode_lines(image)
 
 # Save the cleaned image
-output_path = 'test.png'
+output_path = 'path_to_output_image.png'
 cv2.imwrite(output_path, cleaned_image)
-print(f"Cleaned image saved to {output_path}")
+
+# # Specify the path to your image and the output path
+# image_path = 'BarcodeScreenshots/barcode-screenshot1.png'
+# output_path = 'path_to_output_image.png'
+
+# process_image(image_path, output_path)
